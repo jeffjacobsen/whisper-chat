@@ -7,20 +7,10 @@
 			<button @click="configWithKey" v-if="symKeyId && name">Start</button>
 		</div>
 		<div v-else>
-			<div>
-				Topic: {{topic}}<br>
-				Key: {{symKey}}
-			</div>
 			<div class="columns">
 				<div>
 					<p v-for="m of msgs">
 						<b>{{m.name}}</b>: {{m.text}}
-					</p>
-				</div>
-				<div>
-					<p v-if="sent.length">SENT by {{name}}:</p>
-					<p v-for="m of sent">
-						<b>></b> {{m.text}}
 					</p>
 					Message: <input v-model="text" @keyup.enter="sendMessage" />
 					<button @click="sendMessage">Send</button>
@@ -51,10 +41,12 @@ export default {
 			symKey: ""
 		};
 
+		/* generate private keypair
 		this.shh.newKeyPair().then(id => {
 			data.asymKeyId = id;
 			return this.shh.getPublicKey(id).then(pubKey => this.asymPubKey = pubKey).catch(console.log);
 		}).catch(console.log);
+		*/
 
 		return data;
 	},
@@ -66,21 +58,18 @@ export default {
 				name: this.name
 			};
 
-			this.sent.push(msg);
-
 			let postData = {
+			    symKeyID: this.symKeyId,
+                topic: this.topic,
+                payload: encodeToHex(JSON.stringify(msg)),
 				ttl: 7,
-				topic: this.topic,
 				powTarget: 2.01,
-				powTime: 100,
-				payload: encodeToHex(JSON.stringify(msg)),
+				powTime: 100
 			};
 
-			postData.symKeyID = this.symKeyId;
-
 			this.shh.post(postData);
-
 			this.text = "";
+            // this.sent.push(msg);
 		},
 
         updateSymKey(sympw) {
@@ -95,23 +84,19 @@ export default {
         },
 
 		configWithKey() {
-			// TODO use a form
 			if (!this.name || this.name.length == 0) {
 				alert("Please pick a username");
 				return;
 			}
+            if (!this.symKeyId || this.symKeyId.length == 0) {
+                alert("please enter a pasword to generate a key!");
+                return;
+            }
 
 			let filter = {
-				topics: [this.topic]
+				topics: [this.topic],
+				symKeyID: this.symKeyId
 			};
-
-
-			if (!this.symKeyId || this.symKeyId.length == 0) {
-				alert("please enter a pasword to generate a key!");
-				return;
-			}
-
-			filter.symKeyID = this.symKeyId
 
 			this.msgFilter = this.shh.newMessageFilter(filter).then(filterId => {
 				setInterval(() => {

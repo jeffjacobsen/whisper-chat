@@ -1,39 +1,38 @@
 <template>
 	<div>
-		<h1>Whisper Example Chat Application</h1>
+		<h1>Whisper Chat</h1>
 		<div v-if="!configured">
-			<input type="checkbox" v-model="asym" /> Asymmetric<br>
-			<asymmetric-key-config v-if="asym" :pub-key="asymPubKey" :key-id="asymKeyId"></asymmetric-key-config>
-			<symmetric-key-config v-else @update-sym-key="updateSymKey" :sym-key-id="symKeyId"></symmetric-key-config>
-
-			username: <input v-model="name" /><br>
-			<button @click="configWithKey" v-if="(asymKeyId || symKeyId) && name">Start</button>
+			Topic Password: <input v-model="sympw" @input="updateSymKey(sympw)" /><br><br>
+			Username: <input v-model="name" /><br><br>
+			<button @click="configWithKey" v-if="symKeyId && name">Start</button>
 		</div>
 		<div v-else>
-			<div v-if="asym">
-				My publick key: {{asymPubKey}}
-				Recipient's public key: <input  v-model="recipientPubKey" />
+			<div>
+				Topic: {{topic}}<br>
+				Key: {{symKey}}
 			</div>
-			<div v-else>
-				Key: {{symKeyId}}
+			<div class="columns">
+				<div>
+					<p v-for="m of msgs">
+						<b>{{m.name}}</b>: {{m.text}}
+					</p>
+				</div>
+				<div>
+					<p v-if="sent.length">SENT by {{name}}:</p>
+					<p v-for="m of sent">
+						<b>></b> {{m.text}}
+					</p>
+					Message: <input v-model="text" @keyup.enter="sendMessage" />
+					<button @click="sendMessage">Send</button>
+				</div>
 			</div>
-			<p v-for="m of msgs">
-				<b>{{m.name}}</b>: {{m.text}}
-			</p>
-			Please type a message: <input v-model="text" @keyup.enter="sendMessage" />
-			<button @click="sendMessage">Send</button>
 		</div>
 	</div>
 </template>
 
 <script>
 import Web3 from 'web3';
-import SymmetricKeyConfig from './SymmetricKeyConfig.vue';
-import AsymmetricKeyConfig from './AsymmetricKeyConfig.vue';
 import {decodeFromHex, encodeToHex} from './hexutils';
-
-const defaultRecipientPubKey = "0x04ffb2647c10767095de83d45c7c0f780e483fb2221a1431cb97a5c61becd3c22938abfe83dd6706fc1154485b80bc8fcd94aea61bf19dd3206f37d55191b9a9c4";
-const defaultTopic = "0x5a4ea131";
 
 export default {
 	data() {
@@ -42,16 +41,14 @@ export default {
 
 		let data = {
 			msgs: [],
+			sent: [],
 			text: "",
 			symKeyId: null,
 			name: "",
-			asymKeyId: null,
 			sympw: "",
-			asym: true,
 			configured: false,
-			topic: defaultTopic,
-			recipientPubKey: defaultRecipientPubKey,
-			asymPubKey: ""
+			topic: null,
+			symKey: ""
 		};
 
 		this.shh.newKeyPair().then(id => {
@@ -62,8 +59,6 @@ export default {
 		return data;
 	},
 
-	components: {AsymmetricKeyConfig, SymmetricKeyConfig},
-
 	methods: {
 		sendMessage() {
 			let msg = {
@@ -71,7 +66,7 @@ export default {
 				name: this.name
 			};
 
-			this.msgs.push(msg);
+			this.sent.push(msg);
 
 			let postData = {
 				ttl: 7,
@@ -81,20 +76,23 @@ export default {
 				payload: encodeToHex(JSON.stringify(msg)),
 			};
 
-			if (this.asym) {
-				postData.pubKey = this.recipientPubKey;
-				postData.sig = this.asymKeyId;
-			} else
-				postData.symKeyID = this.symKeyId;
+			postData.symKeyID = this.symKeyId;
 
 			this.shh.post(postData);
 
 			this.text = "";
 		},
 
-		updateSymKey(sympw) {
-			this.shh.generateSymKeyFromPassword(sympw).then(symKeyID => this.symKeyId = symKeyID)
-		},
+        updateSymKey(sympw) {
+            Promise.all([
+                this.shh.generateSymKeyFromPassword(sympw).then(symKeyID => this.symKeyId = symKeyID),
+            ]).then(() => {
+                this.shh.getSymKey(this.symKeyId).then(symKey => {
+                    this.topic = symKey.substring(0, 10); // use first 8 hex characters from key as topic
+                    this.symKey = symKey
+                })
+            })
+        },
 
 		configWithKey() {
 			// TODO use a form
@@ -107,21 +105,13 @@ export default {
 				topics: [this.topic]
 			};
 
-			if (this.asym) {
-				if(!this.asymKeyId) {
-					alert("No valid asymmetric key");
+
+			if (!this.symKeyId || this.symKeyId.length == 0) {
+				alert("please enter a pasword to generate a key!");
 				return;
 			}
 
-				filter.privateKeyID = this.asymKeyId;
-			} else {
-				if (!this.symKeyId || this.symKeyId.length == 0) {
-					alert("please enter a pasword to generate a key!");
-				return;
-			}
-
-				filter.symKeyID = this.symKeyId;
-			}
+			filter.symKeyID = this.symKeyId
 
 			this.msgFilter = this.shh.newMessageFilter(filter).then(filterId => {
 				setInterval(() => {
@@ -142,3 +132,12 @@ export default {
 	}
 };
 </script>
+
+<style>
+	.columns {
+		display: flex;
+	}
+	.columns > div {
+		flex: 1;
+	}
+</style>

@@ -1,10 +1,11 @@
 {
-  "name": "whisper-chat-example",
+  "name": "whisper-chat",
   "version": "1.0.0",
-  "description": "This example demonstrates how to build a whisper(v6)-based chat.",
+  "description": "This demonstrates how to build a whisper-based chat.",
   "main": "index.js",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development webpack-dev-server --hot"
+    "dev": "cross-env NODE_ENV=development webpack-dev-server --hot",
+    "build": "webpack --config webpack.config.js"
   },
   "author": "Guillaume Ballet",
   "license": "Unlicense",

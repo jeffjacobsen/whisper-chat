@@ -6,7 +6,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, './dist'),
     publicPath: '/dist/',
-    filename: 'whisper-chat-example.js'
+    filename: 'whisper-chat.js'
   },
   module: {
     rules: [

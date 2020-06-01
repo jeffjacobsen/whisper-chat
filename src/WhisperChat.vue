@@ -2,7 +2,7 @@
 	<div>
 		<h1>Whisper Chat</h1>
 		<div v-if="!configured">
-			Topic Password: <input v-model="sympw" @input="updateSymKey(sympw)" /><br><br>
+			Group ID: <input v-model="sympw" @input="updateSymKey(sympw)" /><br><br>
 			Username: <input v-model="name" /><br><br>
 			<button @click="configWithKey" v-if="symKeyId && name">Start</button>
 		</div>
@@ -26,7 +26,7 @@ import {decodeFromHex, encodeToHex} from './hexutils';
 
 export default {
 	data() {
-		this.web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+		this.web3 = new Web3(new Web3.providers.WebsocketProvider("ws://localhost:8546"));
 		this.shh = this.web3.shh;
 
 		let data = {
@@ -73,23 +73,23 @@ export default {
 		},
 
         updateSymKey(sympw) {
-            Promise.all([
-                this.shh.generateSymKeyFromPassword(sympw).then(symKeyID => this.symKeyId = symKeyID),
-            ]).then(() => {
-                this.shh.getSymKey(this.symKeyId).then(symKey => {
-                    this.topic = symKey.substring(0, 10); // use first 8 hex characters from key as topic
-                    this.symKey = symKey
-                })
-            })
-        },
+			this.shh.generateSymKeyFromPassword(sympw).then(symKeyID => {
+				this.shh.getSymKey(symKeyID).then(symKey => {
+					this.topic = symKey.substring(0, 10); // use first 8 hex characters from key as topic
+					this.symKey = symKey
+					this.symKeyId = symKeyID
+				})
+			})
+
+		},
 
 		configWithKey() {
-			if (!this.name || this.name.length == 0) {
+			if (!this.name || this.name.length === 0) {
 				alert("Please pick a username");
 				return;
 			}
-            if (!this.symKeyId || this.symKeyId.length == 0) {
-                alert("please enter a pasword to generate a key!");
+            if (!this.symKeyId || this.symKeyId.length === 0) {
+                alert("please enter a password to generate a key!");
                 return;
             }
 
@@ -97,21 +97,13 @@ export default {
 				topics: [this.topic],
 				symKeyID: this.symKeyId
 			};
-
-			this.msgFilter = this.shh.newMessageFilter(filter).then(filterId => {
-				setInterval(() => {
-					this.shh.getFilterMessages(filterId).then(messages => {
-						for (let msg of messages) {
-							let message = decodeFromHex(msg.payload);
-							this.msgs.push({
-								name: message.name,
-								text: message.text
-							});
-						}
-					});
-				}, 1000);
-			});
-
+			this.shh.subscribe('messages', filter, (error, notification) => {
+				let message = decodeFromHex(notification.payload);
+				this.msgs.push({
+					name: message.name,
+					text: message.text
+				});
+			})
 			this.configured = true;
 		}
 	}

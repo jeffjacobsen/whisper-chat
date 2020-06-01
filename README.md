@@ -1,10 +1,10 @@
 # whisper-chat
 
-This demonstrates how to use Ethereum Whisper.
+This demonstrates how to use Ethereum Whisper v6.
 
 ## Running the example
 
-This example assumes that there is a running Whisper v6 node exposing an RPC interface at URL `http://localhost:8545`. 
+This example assumes that there is a running Whisper v6 node exposing an WebSocket RPC interface at URL `ws://localhost:8546`. 
 
 Clone this repository and download the dependencies:
 

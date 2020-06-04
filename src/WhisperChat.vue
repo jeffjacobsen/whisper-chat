@@ -2,7 +2,7 @@
 	<div>
 		<h1>Whisper Chat</h1>
 		<div v-if="!configured">
-			Group ID: <input v-model="sympw" @input="updateSymKey(sympw)" /><br><br>
+			Symmetric Password: <input v-model="sympw" @input="updateSymKey(sympw)" /><br><br>
 			Username: <input v-model="name" /><br><br>
 			<button @click="configWithKey" v-if="symKeyId && name">Start</button>
 		</div>
